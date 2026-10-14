@@ -1,0 +1,20 @@
+# Dataset dan split lokal
+train/
+local_data/
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.bmp
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Eksperimen
+runs/
+logs/
+checkpoints/
+*.json
