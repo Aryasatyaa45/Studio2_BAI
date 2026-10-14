@@ -1,46 +1,57 @@
-# Studio 2 — Klasifikasi Sampah
+# Studio 2 — Klasifikasi Sampah · Kelompok BAI
 
-**Nama kelompok:** BAI  
-**Mata kuliah:** Deep Learning (IF25-40401)  
-**Institusi:** Teknik Informatika ITERA  
-**Semester:** Ganjil 2026/2027
+Deep Learning (IF25-40401) · Teknik Informatika ITERA · Semester Ganjil 2026/2027
 
 ## Anggota Kelompok
 
 | No | Nama Lengkap | NIM | Kontribusi utama |
-|---:|---|---|---|
-| 1 | Muhammad Nurikhsan | 123140057 | Sebagai Ketua kelompok serta membantu membangun kode |
-| 2 | Aryasatya Widyatna Akbar | 123140164 | Merancang pendekatan serta membantu membangun kode  |
-| 3 | Muhammad Bimastiar | 123140211 | Memrancang strategi serta membantu membangun kode |
+|----|--------------|-----|------------------|
+| 1  | Muhammad Nurikhsan | 123140057 | Sebagai ketua kelompok serta membantu membangun kode |
+| 2  | Aryasatya Widyatna Akbar | 123140164 | Merancang pendekatan serta membantu membangun kode |
+| 3  | Muhammad Bimastiar | 123140211 | Merancang strategi serta membantu membangun kode |
 
 ## Ringkasan Pendekatan
 
-- **Backbone awal:** ResNet-18 pretrained ImageNet.
-- **Jumlah kelas:** 5.
-- **Ukuran input:** 224×224.
-- **Strategi awal:** RandomResizedCrop, horizontal flip, ColorJitter, normalisasi ImageNet, AdamW, CosineAnnealingLR, dan label smoothing.
-- **Metrik pemilihan model:** Macro-F1 pada split validasi lokal.
-- **Data tambahan:** Belum digunakan.
+- **Arsitektur / backbone**: ResNet-18 pretrained ImageNet dengan classification head untuk 5 kelas.
+- **Strategi pelatihan**: full fine-tuning, AdamW, learning rate `3e-4`, weight decay `1e-4`, CosineAnnealingLR, label smoothing `0.1`, 8 epoch, dan seed `42`.
+- **Augmentasi**: RandomResizedCrop 224×224, RandomHorizontalFlip, dan ColorJitter.
+- **Data tambahan**: Tidak ada.
+- **Ukuran input & preprocessing**: Gambar RGB diubah menjadi 224×224, tensor, lalu dinormalisasi menggunakan mean dan standard deviation ImageNet.
+- **Metrik pemilihan model**: Macro-F1 pada split validasi lokal 15% per kelas.
 
-Dataset train disimpan lokal dan tidak diunggah ke repository sesuai aturan kompetisi. Metadata sumber gambar juga tidak dipublikasikan ulang.
+Dataset dan `train_sources.csv` disimpan di lingkungan lokal dan tidak diunggah ke repository publik sesuai aturan kompetisi.
 
-## Urutan Kelas
+## Hasil
 
-```text
-0 botol_plastik
-1 gelas_plastik
-2 kertas_kardus
-3 saset_kemasan
-4 styrofoam
-```
+| Putaran | Commit | Macro-F1 (split validasi lokal) | Macro-F1 (diumumkan asisten) |
+|---------|--------|----------------------------------|------------------------------|
+| Preview 1 (14 Okt) | `21ce85a` | `0.9363` | - |
+| Preview 2 (21 Okt) | - | - | - |
+| Final (25 Okt)     | - | - | - |
 
-## Setup
+Catatan eksperimen singkat:
+
+- Baseline 1 epoch menghasilkan Macro-F1 lokal `0.8337` dan akurasi `0.8366`.
+- Training 8 epoch menghasilkan Macro-F1 lokal terbaik `0.9363` dan akurasi `0.9390` pada epoch ke-8.
+- F1 per kelas pada model terbaik: `botol_plastik` `0.9605`, `gelas_plastik` `0.9554`, `kertas_kardus` `0.8932`, `saset_kemasan` `0.9300`, dan `styrofoam` `0.9423`.
+- Kelas dengan performa terendah adalah `kertas_kardus`, sehingga menjadi fokus eksperimen berikutnya.
+- Hasil di atas berasal dari split validasi lokal dan bukan skor validation set tersembunyi resmi.
+
+## Cara Reproduksi
+
+Install dependensi dari root repository:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Dataset harus tetap berada di luar repository dalam struktur:
+Jalankan training baseline 8 epoch:
+
+```bash
+python train.py --data "Q:/Pembelajaran Mendalam/Studio 2/train" --epochs 8 --batch-size 16
+```
+
+Training otomatis membuat split validasi lokal 15% per kelas di `local_data/` menggunakan seed `42`. Dataset harus berada di luar repository dengan struktur berikut:
 
 ```text
 train/
@@ -51,63 +62,31 @@ train/
 └── styrofoam/
 ```
 
-## Training Lokal
-
-Jalankan smoke test satu epoch terlebih dahulu:
+Uji submission menggunakan evaluator resmi:
 
 ```bash
-python train.py --data "Q:/Pembelajaran Mendalam/Studio 2/train" --epochs 1
+python evaluate.py --submission ./submission --data ./local_data/my_val --out ./local_metrics.json
 ```
 
-Training baseline penuh:
-
-```bash
-python train.py --data "Q:/Pembelajaran Mendalam/Studio 2/train" --epochs 8
-```
-
-Jika bobot ImageNet belum tersedia di cache, torchvision akan mengunduhnya saat training pertama. Untuk uji tanpa unduhan bobot:
-
-```bash
-python train.py --data "Q:/Pembelajaran Mendalam/Studio 2/train" --epochs 1 --scratch
-```
-
-Split validasi lokal dibuat otomatis di `local_data/` dengan proporsi 15% per kelas dan seed 42. Folder tersebut diabaikan oleh Git.
-
-## Evaluasi Submission
-
-Setelah training menghasilkan `submission/model.pth`:
-
-```bash
-python evaluate.py --submission ./submission --data ./local_data/my_val --out local_metrics.json
-```
-
-Evaluator resmi memeriksa output logits `[batch, 5]` dan menghitung Macro-F1, akurasi, F1 per kelas, serta confusion matrix.
-
-## Struktur Submission
+## Struktur Repositori
 
 ```text
 submission/
-├── model.py
-└── model.pth
+  model.py          # get_model() dan get_transform()
+  model.pth         # state_dict model terbaik
+
+evaluate.py         # salinan skrip evaluasi resmi
+train.py            # kode training baseline dan pembuatan split lokal
+requirements.txt    # dependensi Python
+README.md           # dokumentasi kelompok
 ```
 
-`submission/model.py` menyediakan `get_model()` dan `get_transform()` sesuai kontrak evaluator resmi. `model.pth` berisi `state_dict` model terbaik berdasarkan Macro-F1 validasi lokal.
+`submission/model.py` harus menghasilkan logits berukuran `[batch, 5]` dengan urutan kelas berikut:
 
-## Progress Check
-
-| Putaran | Tenggat | Status |
-|---|---|---|
-| Preview 1 | 14 Oktober 2026, 23:59 WIB | Belum dikirim |
-| Preview 2 | 21 Oktober 2026, 23:59 WIB | Belum dikirim |
-| Final | 25 Oktober 2026, 23:59 WIB | Belum dikirim |
-
-Commit harus dibuat sebelum setiap tenggat. Skor Final ditentukan dari Macro-F1 pada validation set tersembunyi.
-
-## Catatan Aturan
-
-- Repository kelompok harus publik.
-- README final wajib memuat nama lengkap dan NIM seluruh anggota.
-- `model.pth` maksimal 500 MB.
-- Validation set resmi tidak dibagikan kepada kelompok.
-- Jangan mengunggah dataset atau `train_sources.csv` ke repository publik.
-- Berbagi kode, bobot, atau prediksi dengan kelompok lain tidak diperbolehkan.
+```text
+0 botol_plastik
+1 gelas_plastik
+2 kertas_kardus
+3 saset_kemasan
+4 styrofoam
+```
